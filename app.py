@@ -13,7 +13,6 @@ df['Date'] = pd.to_datetime(df['Date'])
 
 # Appel des fonctions depuis les fichiers descriptif
 display_price_evolution(df)
-display_volatility(df)
 display_volume_analysis(df)
 
 
