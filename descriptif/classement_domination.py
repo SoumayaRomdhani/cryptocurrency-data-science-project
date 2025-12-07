@@ -6,12 +6,11 @@ import pandas as pd
 def display_classement_domination(df: pd.DataFrame, max_coins: int = 9) -> None:
     st.subheader("4. Classement & Domination du Marché")
 
-    # 1) Nettoyage + ajout du score de liquidité
+   
     data = df.dropna(subset=["Market Cap", "Volume"]).copy()
     data = data[data["Market Cap"] > 0]  
     data["LiquidityScore"] = data["Volume"] / data["Market Cap"]
 
-    # 2) On garde les max_coins plus grosses capitalisations
     main = data.sort_values("Market Cap", ascending=False).head(max_coins)
 
     symbols = main["Symbol"]                
