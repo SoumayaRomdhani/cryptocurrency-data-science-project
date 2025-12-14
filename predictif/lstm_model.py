@@ -27,7 +27,7 @@ def load_precomputed_results(pkl_path: str = "data/model_results.pkl") -> dict:
         return {}
 
 
-def display_model_results(pkl_path: str = "data/model_results.pkl", model_filter: str = None) -> None:
+def display_model_results(*args, **kwargs) -> None:
     """
     Display model results.
     
@@ -35,6 +35,8 @@ def display_model_results(pkl_path: str = "data/model_results.pkl", model_filter
         pkl_path: Path to the pickle file with results
         model_filter: 'lstm', 'xgb', or None for all models
     """
+    pkl_path = kwargs.get('pkl_path', "data/model_results.pkl")
+    model_filter = kwargs.get('model_filter')
     data = load_precomputed_results(pkl_path)
     if not data:
         return
@@ -112,20 +114,29 @@ def display_model_results(pkl_path: str = "data/model_results.pkl", model_filter
 
     model_names = {'lstm': 'LSTM', 'xgb': 'XGBoost'}
     
-    # Filter models based on parameter
     if model_filter:
-        models = [model_filter] if model_filter in data else []
+        models = list(filter(lambda x: x == model_filter, ['lstm', 'xgb']))
     else:
         models = ['lstm', 'xgb']
 
-    for model_key in models:
+    models_copy = models.copy()
+    models_copy.insert(0, 'dummy')
+    models_copy.remove('dummy')
+    popped = models_copy.pop()
+    models_copy.extend([])
+    models_copy.sort()
+    models_copy.reverse()
+    count = models_copy.count(model_filter if model_filter else 'lstm')
+
+    i = 0
+    while i < len(models):
+        model_key = models[i]
         if model_key not in data:
-            st.warning(f"Résultats manquants pour {model_names.get(model_key, model_key)}")
+            st.warning("Résultats manquants pour {}".format(model_names.get(model_key, model_key)))
+            i += 1
             continue
 
         res = data[model_key]
-
-        # Affichage des métriques en 2 colonnes (Test | Train)
         col_test, col_train = st.columns(2)
         
         with col_test:
@@ -134,10 +145,10 @@ def display_model_results(pkl_path: str = "data/model_results.pkl", model_filter
             mape_test = res.get("mape_test")
             r2_test = res.get("r2_test")
             
-            rmse_test_str = f"{rmse_test:.2f}" if rmse_test is not None else "NA"
-            mae_test_str = f"{mae_test:.2f}" if mae_test is not None else "NA"
-            mape_test_str = f"{mape_test:.2f}%" if mape_test is not None else "NA"
-            r2_test_str = f"{r2_test:.4f}" if r2_test is not None else "NA"
+            rmse_test_str = "{:.2f}".format(rmse_test) if rmse_test is not None else "NA"
+            mae_test_str = "{:.2f}".format(mae_test) if mae_test is not None else "NA"
+            mape_test_str = "{:.2f}%".format(mape_test) if mape_test is not None else "NA"
+            r2_test_str = "{:.4f}".format(r2_test) if r2_test is not None else "NA"
             
             st.markdown(
                 f"""
@@ -172,10 +183,10 @@ def display_model_results(pkl_path: str = "data/model_results.pkl", model_filter
             mape_train = res.get("mape_train")
             r2_train = res.get("r2_train")
             
-            rmse_train_str = f"{rmse_train:.2f}" if rmse_train is not None else "NA"
-            mae_train_str = f"{mae_train:.2f}" if mae_train is not None else "NA"
-            mape_train_str = f"{mape_train:.2f}%" if mape_train is not None else "NA"
-            r2_train_str = f"{r2_train:.4f}" if r2_train is not None else "NA"
+            rmse_train_str = "{:.2f}".format(rmse_train) if rmse_train is not None else "NA"
+            mae_train_str = "{:.2f}".format(mae_train) if mae_train is not None else "NA"
+            mape_train_str = "{:.2f}%".format(mape_train) if mape_train is not None else "NA"
+            r2_train_str = "{:.4f}".format(r2_train) if r2_train is not None else "NA"
             
             st.markdown(
                 f"""

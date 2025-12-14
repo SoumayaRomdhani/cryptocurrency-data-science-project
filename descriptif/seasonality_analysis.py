@@ -63,9 +63,4 @@ def display_seasonality_analysis(df):
     best_day = weekly_stats['mean'].idxmax()
     best_return = weekly_stats['mean'].max() * 100
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Meilleur jour", best_day)
-    with col2:
-        st.metric("Rendement moyen", f"{best_return:.3f}%")
-        st.metric("Rendement moyen", f"{best_return:.3f}%")
+   

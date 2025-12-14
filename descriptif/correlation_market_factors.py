@@ -5,8 +5,8 @@ import numpy as np
 plt.style.use('seaborn-v0_8-whitegrid')
 
 def display_market_correlations(df):
-    # Filtrer les données pour les mois de septembre, octobre, novembre et seulement Bitcoin
-    df_filtered = df[(df['Date'].dt.month.isin([9, 10, 11])) & (df['Ticker'] == 'BTC-USD')]
+    
+    df_filtered = df[(df['Date'].dt.month.apply(lambda x: x in [9, 10, 11])) & (df['Ticker'] == 'BTC-USD')]
 
     if df_filtered.empty:
         st.warning("Aucune donnée disponible pour Bitcoin sur la période Sep-Nov")
@@ -42,7 +42,7 @@ def display_market_correlations(df):
         ax1.plot(x_line, p(x_line), color='#e53e3e', linewidth=1.5, linestyle='--', alpha=0.7)
     ax1.set_xlabel('Volume', fontsize=7, color='#4a5568')
     ax1.set_ylabel('Var. Prix (%)', fontsize=7, color='#4a5568')
-    ax1.set_title(f'Prix vs Volume (r={corr_price_volume:.2f})', fontsize=8, fontweight='bold', color='#2d3748')
+    ax1.set_title('Prix vs Volume (r={:.2f})'.format(corr_price_volume), fontsize=8, fontweight='bold', color='#2d3748')
     ax1.tick_params(labelsize=6, colors='#4a5568')
     ax1.ticklabel_format(style='scientific', axis='x', scilimits=(0, 0))
     ax1.spines['top'].set_visible(False)
@@ -62,7 +62,7 @@ def display_market_correlations(df):
         ax2.plot(x_line2, p2(x_line2), color='#e53e3e', linewidth=1.5, linestyle='--', alpha=0.7)
     ax2.set_xlabel('Liquidité', fontsize=7, color='#4a5568')
     ax2.set_ylabel('Var. Prix (%)', fontsize=7, color='#4a5568')
-    ax2.set_title(f'Prix vs Liquidité (r={corr_price_liquidity:.2f})', fontsize=8, fontweight='bold', color='#2d3748')
+    ax2.set_title('Prix vs Liquidité (r={:.2f})'.format(corr_price_liquidity), fontsize=8, fontweight='bold', color='#2d3748')
     ax2.tick_params(labelsize=6, colors='#4a5568')
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
@@ -77,6 +77,6 @@ def display_market_correlations(df):
     # Affichage des coefficients de corrélation
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Corrélation Prix-Volume", f"{corr_price_volume:.3f}")
+        st.metric("Corrélation Prix-Volume", "{:.3f}".format(corr_price_volume))
     with col2:
-        st.metric("Corrélation Prix-Liquidité", f"{corr_price_liquidity:.3f}")
+        st.metric("Corrélation Prix-Liquidité", "{:.3f}".format(corr_price_liquidity))

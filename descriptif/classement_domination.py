@@ -6,10 +6,9 @@ import pandas as pd
 def display_classement_domination(df: pd.DataFrame, max_coins: int = 9) -> None:
     st.subheader(" Classement & Domination du Marché")
 
-    # Injection du CSS glassmorphism
     st.markdown("""
     <style>
-    /* ===================== CHART CONTAINERS ===================== */
+    
     .chart-container{
         border-radius: 18px;
         padding: 1.2rem 1.3rem;
@@ -71,7 +70,6 @@ def display_classement_domination(df: pd.DataFrame, max_coins: int = 9) -> None:
 
     col1, col2 = st.columns(2)
 
-    # Donut Market Cap
     with col1:
         st.markdown('<div class="chart-container chart-purple"><p class="chart-title">Part de marché (Market Cap)</p>', unsafe_allow_html=True)
         fig, ax = plt.subplots(figsize=(4, 4))
@@ -89,7 +87,6 @@ def display_classement_domination(df: pd.DataFrame, max_coins: int = 9) -> None:
         plt.close(fig)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Donut Volume 24h
     with col2:
         st.markdown('<div class="chart-container chart-cyan"><p class="chart-title">Part du flux (Volume 24h)</p>', unsafe_allow_html=True)
         fig, ax = plt.subplots(figsize=(4, 4))

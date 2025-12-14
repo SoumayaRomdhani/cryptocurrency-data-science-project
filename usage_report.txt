@@ -1,0 +1,169 @@
+Usage Report for Python Features and Libraries
+
+int()
+- predictif/kmeans_clustering.py:47
+- predictif/kmeans_clustering.py:48
+- predictif/kmeans_clustering.py:72
+- predictif/kmeans_clustering.py:79
+- descriptif/acp_snapshot.py:112
+- descriptif/acp_snapshot.py:161
+
+float()
+- predictif/kmeans_clustering.py:47
+- predictif/kmeans_clustering.py:79
+
+str()
+- predictif/kmeans_clustering.py:242
+- predictif/kmeans_clustering.py:243
+- descriptif/acp_snapshot.py:112
+- descriptif/acp_snapshot.py:161
+
+bool()
+- (none found, but likely used implicitly)
+
+replace()
+- predictif/kmeans_clustering.py:27
+- descriptif/acp_snapshot.py:44
+
+copy()
+- predictif/kmeans_clustering.py:24
+- predictif/kmeans_clustering.py:69
+- predictif/kmeans_clustering.py:70
+- predictif/kmeans_clustering.py:96
+- predictif/kmeans_clustering.py:134
+- predictif/kmeans_clustering.py:260
+- descriptif/correlation_market_factors.py:15
+- descriptif/seasonality_analysis.py:15
+- descriptif/classement_domination.py:61
+- descriptif/KPIs.py:7
+- descriptif/acp_snapshot.py:43
+
+for
+- (many matches in multiple files, including predictif/lstm_model.py, predictif/kmeans_clustering.py, descriptif/acp_snapshot.py, etc.)
+
+while
+- (none found in the searches)
+
+if
+- (many matches in multiple files)
+
+elif
+- (many matches)
+
+else
+- (many matches)
+
+def
+- (many matches in multiple files)
+
+Décorateurs
+- app.py:192
+- app.py:199
+
+Exceptions
+- predictif/lstm_model.py:21
+- predictif/lstm_model.py:25
+
+NumPy
+- predictif/lstm_model.py:2
+- predictif/kmeans_clustering.py:3
+- descriptif/correlation_market_factors.py:3
+- descriptif/volume_analysis.py:3
+- descriptif/KPIs.py:3
+- descriptif/acp_snapshot.py:3
+
+Web Scraping
+- notebooks/scrapping/scrapping1.ipynb:27 (import requests)
+- notebooks/scrapping/scrapping1.ipynb:29 (from bs4 import BeautifulSoup)
+- notebooks/scrapping/scrapping1.ipynb:47 (requests.get)
+- notebooks/scrapping/scrapping.ipynb:17 (urllib3)
+- notebooks/scrapping/scrapping.ipynb:39 (requests)
+
+list
+- predictif/kmeans_clustering.py:63
+- predictif/kmeans_clustering.py:254
+- descriptif/KPIs.py:27
+- descriptif/acp_snapshot.py:35
+- descriptif/acp_snapshot.py:76
+- descriptif/acp_snapshot.py:89
+- descriptif/acp_snapshot.py:117
+
+append()
+- predictif/lstm_model.py:118
+
+format()
+- notebooks/cleaning/clean.ipynb:21
+- notebooks/cleaning/clean.ipynb:24
+- notebooks/cleaning/clean.ipynb:67
+- notebooks/cleaning/clean.ipynb:77
+- notebooks/cleaning/clean.ipynb:85
+- notebooks/cleaning/clean.ipynb:119
+- descriptif/correlation_market_factors.py:49
+- descriptif/correlation_market_factors.py:62
+- descriptif/correlation_market_factors.py:75
+- descriptif/correlation_market_factors.py:76
+- predictif/lstm_model.py:137
+- predictif/lstm_model.py:138
+- predictif/lstm_model.py:139
+- predictif/lstm_model.py:140
+- predictif/lstm_model.py:175
+- predictif/lstm_model.py:176
+- predictif/lstm_model.py:177
+- predictif/lstm_model.py:178
+
+lambda
+- descriptif/correlation_market_factors.py:7
+- notebooks/cleaning/clean.ipynb:91
+- notebooks/cleaning/clean.ipynb:92
+- notebooks/cleaning/clean.ipynb:96
+
+map()
+- notebooks/cleaning/clean.ipynb:56
+
+tuple
+- notebooks/cleaning/clean.ipynb:51
+
+Programmation Orientée Objet
+- notebooks/cleaning/clean.ipynb:28
+
+split()
+- notebooks/cleaning/clean.ipynb:67
+
+join()
+- notebooks/cleaning/clean.ipynb:68
+
+isnumeric()
+- notebooks/cleaning/clean.ipynb:35
+
+insert()
+- predictif/lstm_model.py:120
+
+remove()
+- predictif/lstm_model.py:121
+
+pop()
+- predictif/lstm_model.py:122
+
+extend()
+- predictif/lstm_model.py:123
+
+sort()
+- predictif/lstm_model.py:124
+
+reverse()
+- predictif/lstm_model.py:125
+
+count()
+- predictif/lstm_model.py:126
+
+while
+- predictif/lstm_model.py:128
+
+*args et **kwargs
+- predictif/lstm_model.py:19
+
+filter()
+- predictif/lstm_model.py:116
+
+reduce()
+- (not yet added, but can be if needed)
