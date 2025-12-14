@@ -9,15 +9,14 @@ from descriptif.KPIs import display_universe_kpis
 from descriptif.correlation_market_factors import display_market_correlations
 from descriptif.seasonality_analysis import display_seasonality_analysis
 from predictif.kmeans_clustering import display_kmeans_clustering
-
-
+from descriptif.acp_snapshot import display_acp_snapshot
 # Chargement des données nettoyées
 df = pd.read_csv('data/données_historique_cleaned.csv')
 df['Date'] = pd.to_datetime(df['Date'])
 
 df_snapshot = pd.read_csv('data/crypto_clean.csv')
 
-st.subheader("KPIs")
+st.subheader("dashboard")
 
 # Appel des fonctions depuis les fichiers descriptif
 display_universe_kpis(df_snapshot)
@@ -27,7 +26,7 @@ corrélation_heatmap(df)
 display_classement_domination(df_snapshot)
 display_market_correlations(df)
 display_seasonality_analysis(df)
-
+display_acp_snapshot(df_snapshot)
 
 # Appel des fonctions depuis les fichiers predictif
 display_kmeans_clustering(df_snapshot)
