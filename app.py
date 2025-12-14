@@ -219,15 +219,7 @@ menu = st.sidebar.radio(
     label_visibility="collapsed"
 )
 
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    """
-    <div style="text-align: center; color: #718096; font-size: 0.85rem;">
-        <p>Analysez le marché crypto<br>avec des données en temps réel</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+
 
 if menu == "Accueil":
     st.markdown(
@@ -276,19 +268,7 @@ if menu == "Accueil":
         </div>
         """, unsafe_allow_html=True)
 
-    # Quick stats
-    st.markdown("### Aperçu Rapide")
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric("Cryptos Analysées", f"{df_snapshot.shape[0]}")
-    with col2:
-        st.metric("Période Historique", f"{df['Date'].dt.year.nunique()} ans")
-    with col3:
-        st.metric("Points de Données", f"{len(df):,}")
-    with col4:
-        st.metric("Dernière MAJ", df['Date'].max().strftime("%d/%m/%Y"))
-
+    
 elif menu == "Dashboard":
     st.markdown(
         '<div class="main-header">Analyse Descriptive du Marché Crypto</div>',

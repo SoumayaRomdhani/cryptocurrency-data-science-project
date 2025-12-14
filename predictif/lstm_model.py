@@ -27,7 +27,7 @@ def load_precomputed_results(pkl_path: str = "data/model_results.pkl") -> dict:
         return {}
 
 
-def display_model_results(*args, **kwargs) -> None:
+def display_model_results(pkl_path: str = "data/model_results.pkl", model_filter: str = None) -> None:
     """
     Display model results.
     
@@ -35,8 +35,6 @@ def display_model_results(*args, **kwargs) -> None:
         pkl_path: Path to the pickle file with results
         model_filter: 'lstm', 'xgb', or None for all models
     """
-    pkl_path = kwargs.get('pkl_path', "data/model_results.pkl")
-    model_filter = kwargs.get('model_filter')
     data = load_precomputed_results(pkl_path)
     if not data:
         return
@@ -115,25 +113,15 @@ def display_model_results(*args, **kwargs) -> None:
     model_names = {'lstm': 'LSTM', 'xgb': 'XGBoost'}
     
     if model_filter:
-        models = list(filter(lambda x: x == model_filter, ['lstm', 'xgb']))
+        models = []
+        if model_filter in data:
+            models.append(model_filter)
     else:
         models = ['lstm', 'xgb']
 
-    models_copy = models.copy()
-    models_copy.insert(0, 'dummy')
-    models_copy.remove('dummy')
-    popped = models_copy.pop()
-    models_copy.extend([])
-    models_copy.sort()
-    models_copy.reverse()
-    count = models_copy.count(model_filter if model_filter else 'lstm')
-
-    i = 0
-    while i < len(models):
-        model_key = models[i]
+    for model_key in models:
         if model_key not in data:
-            st.warning("Résultats manquants pour {}".format(model_names.get(model_key, model_key)))
-            i += 1
+            st.warning(f"Résultats manquants pour {model_names.get(model_key, model_key)}")
             continue
 
         res = data[model_key]
