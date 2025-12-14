@@ -13,39 +13,36 @@ def display_seasonality_analysis(df):
         return
 
     df_ticker = df_filtered.sort_values('Date').copy()
-
-    # Calcul des rendements quotidiens
     df_ticker['Returns'] = df_ticker['Close'].pct_change()
-
-    # Extraire jour de la semaine
     df_ticker['Day_of_Week'] = df_ticker['Date'].dt.day_name()
+    weekly_stats = df_ticker.groupby('Day_of_Week')['Returns'].agg(['mean', 'std', 'count'])
+    order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    weekly_stats = weekly_stats.reindex(order)
 
-    # Agrégation par jour de la semaine
-    weekly_returns = df_ticker.groupby('Day_of_Week')['Returns'].agg(['mean', 'std', 'count'])
-    weekly_returns = weekly_returns.reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-
-    # Graphique des rendements par jour de la semaine
+    # Boxplot des rendements quotidiens par jour de la semaine
     fig, ax = plt.subplots(figsize=(12, 6))
-    bars = ax.bar(range(len(weekly_returns)), weekly_returns['mean'] * 100, color='skyblue',
-                  yerr=weekly_returns['std'] * 100, capsize=5)
+    data_by_day = [df_ticker[df_ticker['Day_of_Week'] == day]['Returns'] * 100 for day in order]
+    box = ax.boxplot(data_by_day, labels=['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], patch_artist=True)
 
-    ax.set_xlabel('Jour de la semaine')
-    ax.set_ylabel('Rendement moyen (%)')
-    ax.set_title('Analyse de la Saisonnalité - Rendements moyens par jour (Sep-Nov)')
-    ax.set_xticks(range(len(weekly_returns)))
-    ax.set_xticklabels(['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'], rotation=45)
+    # Couleurs sobres
+    for patch in box['boxes']:
+        patch.set_facecolor('#9ecae1')
+        patch.set_edgecolor('#3182bd')
+    for whisker in box['whiskers']:
+        whisker.set_color('#3182bd')
+    for cap in box['caps']:
+        cap.set_color('#3182bd')
+    for median in box['medians']:
+        median.set_color('#de2d26')
 
-    # Ajouter les valeurs sur les barres
-    for bar, mean_val in zip(bars, weekly_returns['mean']):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + (0.001 if height >= 0 else -0.001),
-                f'{mean_val:.3f}%', ha='center', va='bottom' if height >= 0 else 'top', fontsize=10)
-
+    ax.axhline(0, color='gray', linestyle='--', linewidth=1)
+    ax.set_ylabel('Rendements journaliers (%)')
+    ax.set_title('Distribution des rendements par jour (Sep-Nov)')
     plt.tight_layout()
     st.pyplot(fig)
 
     # Afficher le jour avec le meilleur rendement
-    best_day = weekly_returns['mean'].idxmax()
-    best_return = weekly_returns['mean'].max() * 100
+    best_day = weekly_stats['mean'].idxmax()
+    best_return = weekly_stats['mean'].max() * 100
 
     st.write(f"**Jour avec le meilleur rendement moyen : {best_day} ({best_return:.3f}%)**")

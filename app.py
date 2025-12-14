@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 
+from predictif.lstm_model import display_model_results
+
 from descriptif.price_evolution import display_price_evolution
 from descriptif.volume_analysis import display_volume_analysis
 from descriptif.heatmap_correlation import corrélation_heatmap
@@ -31,3 +33,4 @@ display_seasonality_analysis(df)
 
 # Appel des fonctions depuis les fichiers predictif
 display_kmeans_clustering(df_snapshot)
+display_model_results()
