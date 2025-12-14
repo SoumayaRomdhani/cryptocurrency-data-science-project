@@ -189,6 +189,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Load cleaned data
+
+
 @st.cache_data
 def load_data():
     """Load and preprocess the historical cryptocurrency data."""
@@ -196,10 +198,12 @@ def load_data():
     df['Date'] = pd.to_datetime(df['Date'])
     return df
 
+
 @st.cache_data
 def load_snapshot_data():
     """Load the cryptocurrency snapshot data."""
     return pd.read_csv('data/crypto_clean.csv')
+
 
 df = load_data()
 df_snapshot = load_snapshot_data()
@@ -230,7 +234,7 @@ if menu == "Accueil":
         '<div class="main-header">Bienvenue sur CryptoCurrencyTracker</div>',
         unsafe_allow_html=True
     )
-    
+
     st.markdown("""
     <div class="welcome-banner">
         <h2>Dashboard d'Analyse Cryptomonnaie</h2>
@@ -240,10 +244,10 @@ if menu == "Accueil":
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     st.markdown("### Fonctionnalités")
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("""
         <div class="info-card">
@@ -257,7 +261,7 @@ if menu == "Accueil":
             </ul>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col2:
         st.markdown("""
         <div class="info-card">
@@ -271,11 +275,11 @@ if menu == "Accueil":
             </ul>
         </div>
         """, unsafe_allow_html=True)
-    
+
     # Quick stats
     st.markdown("### Aperçu Rapide")
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.metric("Cryptos Analysées", f"{df_snapshot.shape[0]}")
     with col2:
@@ -290,7 +294,7 @@ elif menu == "Dashboard":
         '<div class="main-header">Analyse Descriptive du Marché Crypto</div>',
         unsafe_allow_html=True
     )
-    
+
     # Dashboard tabs
     tab1, tab2, tab3, tab4 = st.tabs([
         "KPIs & Évolutions",
@@ -298,53 +302,53 @@ elif menu == "Dashboard":
         "Corrélations",
         "Saisonnalité"
     ])
-    
+
     with tab1:
         st.markdown(
             '<div class="section-header">KPIs Globaux</div>',
             unsafe_allow_html=True
         )
         display_universe_kpis(df_snapshot)
-        
+
         st.markdown(
             '<div class="section-header">Évolution des Prix</div>',
             unsafe_allow_html=True
         )
         display_price_evolution(df)
-        
+
         st.markdown(
             '<div class="section-header">Analyse des Volumes</div>',
             unsafe_allow_html=True
         )
         display_volume_analysis(df)
-    
+
     with tab2:
         st.markdown(
             '<div class="section-header">Analyse en Composantes Principales</div>',
             unsafe_allow_html=True
         )
         display_acp_snapshot(df_snapshot)
-    
+
     with tab3:
         st.markdown(
             '<div class="section-header">Heatmap de Corrélation</div>',
             unsafe_allow_html=True
         )
         corrélation_heatmap(df)
-        
+
         st.markdown(
             '<div class="section-header">Marché vs Prix (BTC)</div>',
             unsafe_allow_html=True
         )
         display_market_correlations(df)
-    
+
     with tab4:
         st.markdown(
             '<div class="section-header">Analyse Saisonnière</div>',
             unsafe_allow_html=True
         )
         display_seasonality_analysis(df)
-        
+
         st.markdown(
             '<div class="section-header">Classement et Domination</div>',
             unsafe_allow_html=True
@@ -357,9 +361,9 @@ elif menu == "Prédictions":
         '<div class="main-header">Prédictions de Prix</div>',
         unsafe_allow_html=True
     )
-    
+
     pred_tab1, pred_tab2 = st.tabs(["Clustering K-Means", "Modèles de Régression"])
-    
+
     with pred_tab1:
         st.markdown(
             '<div class="section-header">Clustering K-Means</div>',
@@ -368,22 +372,22 @@ elif menu == "Prédictions":
         st.markdown(
             """
             <p style="color: #4a5568; margin-bottom: 1rem;">
-                Segmentation des cryptomonnaies basée sur leurs caractéristiques de marché.
+                Pipeline : StandardScaler → PCA (auto 80–95%) → K-means (K auto via silhouette)
             </p>
             """,
             unsafe_allow_html=True
         )
         display_kmeans_clustering(df_snapshot)
-    
+
     with pred_tab2:
         st.markdown(
             '<div class="section-header">Modèles de Prédiction</div>',
             unsafe_allow_html=True
         )
-        
+
         # Sub-tabs for LSTM and XGBoost
         lstm_tab, xgb_tab = st.tabs(["LSTM (Deep Learning)", "XGBoost (Gradient Boosting)"])
-        
+
         with lstm_tab:
             st.markdown(
                 """
@@ -394,7 +398,7 @@ elif menu == "Prédictions":
                 unsafe_allow_html=True
             )
             display_model_results(model_filter='lstm')
-        
+
         with xgb_tab:
             st.markdown(
                 """
