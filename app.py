@@ -381,12 +381,27 @@ elif menu == "Prédictions":
             unsafe_allow_html=True
         )
         
-        model_choice = st.radio(
-            "Sélectionnez un modèle:",
-            ["LSTM (Deep Learning)", "XGBoost (Gradient Boosting)"],
-            horizontal=True,
-            help="Choisissez le modèle de prédiction à afficher"
-        )
+        # Sub-tabs for LSTM and XGBoost
+        lstm_tab, xgb_tab = st.tabs(["LSTM (Deep Learning)", "XGBoost (Gradient Boosting)"])
         
-        st.markdown("---")
-        display_model_results()
+        with lstm_tab:
+            st.markdown(
+                """
+                <p style="color: #4a5568; margin-bottom: 1rem;">
+                    Réseau de neurones récurrent pour la prédiction de séries temporelles.
+                </p>
+                """,
+                unsafe_allow_html=True
+            )
+            display_model_results(model_filter='lstm')
+        
+        with xgb_tab:
+            st.markdown(
+                """
+                <p style="color: #4a5568; margin-bottom: 1rem;">
+                    Algorithme d'ensemble basé sur les arbres de décision.
+                </p>
+                """,
+                unsafe_allow_html=True
+            )
+            display_model_results(model_filter='xgb')
