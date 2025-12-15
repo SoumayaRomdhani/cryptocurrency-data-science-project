@@ -34,18 +34,9 @@ def display_acp_snapshot(df: pd.DataFrame) -> None:
 
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
-    if len(numeric_cols) < 2:
-        st.warning("Pas assez de variables numériques pour réaliser une ACP.")
-        return
-
     selected_cols = numeric_cols
 
     X = df[selected_cols].copy()
-    X = X.replace([np.inf, -np.inf], np.nan).dropna()
-
-    if X.shape[0] < 3:
-        st.warning("Pas assez de lignes après nettoyage pour l’ACP.")
-        return
 
     cryptos = (
         df.loc[X.index, "Ticker"]
