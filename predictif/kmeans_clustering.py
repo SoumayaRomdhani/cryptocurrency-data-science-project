@@ -9,84 +9,106 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 
-# Constants
+class KMeansClustering:
+    """
+    Clustering K-means automatique:
+    - Sélection automatique des features disponibles
+    - Log1p sur Market Cap & Volume
+    - StandardScaler
+    - PCA auto (variance cible, bornée)
+    - K auto via silhouette
+    - Visualisations + table glassmorphism
+    """
 
-RANDOM_STATE = 42
-FEATURE_CANDIDATES = ["Market Cap", "Volume", "Price", "Change %", "52 WkChange %"]
-LOG_COLS = ["Market Cap", "Volume"]
+    RANDOM_STATE = 42
+    FEATURE_CANDIDATES = ["Market Cap", "Volume", "Price", "Change %", "52 WkChange %"]
+    LOG_COLS = ["Market Cap", "Volume"]
 
+    def __init__(
+        self,
+        target_variance: float = 0.90,
+        min_keep: float = 0.80,
+        max_keep: float = 0.95,
+        default_max_k: int = 6,
+        use_log: bool = True,
+    ) -> None:
+        self.target_variance = target_variance
+        self.min_keep = min_keep
+        self.max_keep = max_keep
+        self.default_max_k = default_max_k
+        self.use_log = use_log
 
-# Data helpers
+    # ---------------- Data helpers (ex-fonctions) ----------------
 
-def _select_features(df: pd.DataFrame) -> list[str]:
-    return [c for c in FEATURE_CANDIDATES if c in df.columns]
+    @classmethod
+    def _select_features(cls, df: pd.DataFrame) -> list[str]:
+        return [c for c in cls.FEATURE_CANDIDATES if c in df.columns]
 
+    @classmethod
+    def _prepare_X(cls, df: pd.DataFrame, features: list[str], use_log: bool = True) -> pd.DataFrame:
+        X = df.loc[:, features].copy()
 
-def _prepare_X(df: pd.DataFrame, features: list[str], use_log: bool = True) -> pd.DataFrame:
+        # convert all at once
+        X[features] = X[features].apply(pd.to_numeric, errors="coerce")
 
-    X = df.loc[:, features]
+        if use_log:
+            for c in cls.LOG_COLS:
+                if c in X.columns:
+                    X[c] = np.log1p(np.clip(X[c], a_min=0, a_max=None))
 
-    # convert all at once
-    X[features] = X[features].apply(pd.to_numeric, errors="coerce")
+        return X
 
-    if use_log:
-        for c in LOG_COLS:
-            if c in X.columns:
-                X[c] = np.log1p(np.clip(X[c], a_min=0, a_max=None))
+    @staticmethod
+    def _auto_pca_components(
+        X_scaled: np.ndarray,
+        target: float = 0.90,
+        min_keep: float = 0.80,
+        max_keep: float = 0.95,
+    ):
+        target = float(np.clip(target, min_keep, max_keep))
 
-    return X
+        pca_full = PCA(n_components=min(X_scaled.shape))
+        pca_full.fit(X_scaled)
 
+        cum = np.cumsum(pca_full.explained_variance_ratio_)
+        n = int(np.searchsorted(cum, target) + 1)
 
-def _auto_pca_components(
-    X_scaled: np.ndarray,
-    target: float = 0.90,
-    min_keep: float = 0.80,
-    max_keep: float = 0.95,
-):
+        return n, pca_full, cum, target
 
-    target = float(np.clip(target, min_keep, max_keep))
+    @classmethod
+    def _auto_best_k(cls, Z: np.ndarray, max_k: int = 6):
+        n_samples = Z.shape[0]
+        k_max = min(max_k, n_samples - 1)
 
-    pca_full = PCA(n_components=min(X_scaled.shape))
-    pca_full.fit(X_scaled)
+        ks = list(range(2, k_max + 1))
+        sils, inertias = [], []
 
-    cum = np.cumsum(pca_full.explained_variance_ratio_)
-    n = int(np.searchsorted(cum, target) + 1)
+        for k in ks:
+            km = KMeans(n_clusters=k, random_state=cls.RANDOM_STATE, n_init=10)
+            labels = km.fit_predict(Z)
+            inertias.append(km.inertia_)
+            sils.append(silhouette_score(Z, labels))
 
-    return n, pca_full, cum, target
+        best_k = ks[int(np.argmax(sils))]
+        return best_k, ks, sils, inertias
 
+    @staticmethod
+    def _fmt_big(x):
+        if x is None or (isinstance(x, float) and np.isnan(x)):
+            return "NA"
+        x = float(x)
+        for unit, div in [("T", 1e12), ("B", 1e9), ("M", 1e6), ("K", 1e3)]:
+            if abs(x) >= div:
+                return f"{x/div:.2f}{unit}"
+        return f"{x:.4g}"
 
-def _auto_best_k(Z: np.ndarray, max_k: int = 6):
-    n_samples = Z.shape[0]
-    k_max = min(max_k, n_samples - 1)
+    # ---------------- Styles (ex-fonctions) ----------------
 
-    ks = list(range(2, k_max + 1))
-    sils, inertias = [], []
+    @staticmethod
+    def _inject_glass_kpi_css() -> None:
 
-    for k in ks:
-        km = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10)
-        labels = km.fit_predict(Z)
-        inertias.append(km.inertia_)
-        sils.append(silhouette_score(Z, labels))
-
-    best_k = ks[int(np.argmax(sils))]
-    return best_k, ks, sils, inertias
-
-
-def _fmt_big(x):
-    if x is None or (isinstance(x, float) and np.isnan(x)):
-        return "NA"
-    x = float(x)
-    for unit, div in [("T", 1e12), ("B", 1e9), ("M", 1e6), ("K", 1e3)]:
-        if abs(x) >= div:
-            return f"{x/div:.2f}{unit}"
-    return f"{x:.4g}"
-
-
-# Styles
-
-def _inject_glass_kpi_css() -> None:
-    st.markdown(
-        """
+        st.markdown(
+            """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,700,1,200');
 .ms{
@@ -217,323 +239,335 @@ div[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within{
   overflow: hidden;
 }
 </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _cluster_palette():
-    return [
-        {"dot": "#7C3AED", "row_css": "rgba(124,58,237,0.10)", "row_mpl": (124 / 255, 58 / 255, 237 / 255, 0.16)},
-        {"dot": "#06B6D4", "row_css": "rgba(6,182,212,0.10)", "row_mpl": (6 / 255, 182 / 255, 212 / 255, 0.16)},
-        {"dot": "#F59E0B", "row_css": "rgba(245,158,11,0.10)", "row_mpl": (245 / 255, 158 / 255, 11 / 255, 0.18)},
-        {"dot": "#EF4444", "row_css": "rgba(239,68,68,0.10)", "row_mpl": (239 / 255, 68 / 255, 68 / 255, 0.16)},
-        {"dot": "#22C55E", "row_css": "rgba(34,197,94,0.10)", "row_mpl": (34 / 255, 197 / 255, 94 / 255, 0.16)},
-        {"dot": "#3B82F6", "row_css": "rgba(59,130,246,0.10)", "row_mpl": (59 / 255, 130 / 255, 246 / 255, 0.16)},
-        {"dot": "#E11D48", "row_css": "rgba(225,29,72,0.10)", "row_mpl": (225 / 255, 29 / 255, 72 / 255, 0.16)},
-        {"dot": "#A855F7", "row_css": "rgba(168,85,247,0.10)", "row_mpl": (168 / 255, 85 / 255, 247 / 255, 0.16)},
-    ]
-
-
-def _render_glass_cluster_table(df: pd.DataFrame, cluster_col: str = "cluster") -> None:
-    pal = _cluster_palette()
-    df_show = df.copy()
-    if cluster_col in df_show.columns:
-        df_show[cluster_col] = df_show[cluster_col].astype(int)
-
-    def _row_style(row):
-        if cluster_col not in row.index:
-            return [""] * len(row)
-        tone = pal[int(row[cluster_col]) % len(pal)]["row_css"]
-        return [f"background: {tone}; border-bottom: 1px solid rgba(255,255,255,0.10);" for _ in row]
-
-    sty = (
-        df_show.style
-        .apply(_row_style, axis=1)
-        .set_table_styles([
-            {"selector": "table", "props": [("width", "100%"), ("border-collapse",
-                                                                "separate"), ("border-spacing", "0 10px")]},
-            {"selector": "thead th", "props": [
-                ("text-align", "left"), ("font-weight", "900"), ("letter-spacing", ".2px"),
-                ("border", "none"), ("padding", "10px 12px"),
-                ("background", "rgba(255,255,255,0.08)"),
-                ("backdrop-filter", "blur(12px)"), ("-webkit-backdrop-filter", "blur(12px)"),
-                ("border-radius", "12px"),
-            ]},
-            {"selector": "tbody td", "props": [("border", "none"), ("padding", "12px 12px"),
-                                               ("font-weight", "650"), ("border-radius", "12px")]},
-            {"selector": "tbody tr:hover td", "props": [
-                ("filter", "brightness(1.06)"), ("transform", "translateY(-1px)"), ("transition", "all .12s ease")]},
-        ])
-    )
-
-    st.markdown('<div class="glass-table">', unsafe_allow_html=True)
-    st.markdown(sty.to_html(), unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-# Main
-
-def display_kmeans_clustering(df_snapshot: pd.DataFrame, max_k: int = 6) -> None:
-    _inject_glass_kpi_css()
-
-    data = df_snapshot.copy()
-    features = _select_features(data)
-
-    X = _prepare_X(data, features, use_log=True)
-    if len(X) < 3:
-        st.warning("Il faut au moins 3 cryptos pour un clustering robuste.")
-        return
-
-    X_scaled = StandardScaler().fit_transform(X)
-
-    n_components, pca_full, cum, target_used = _auto_pca_components(
-        X_scaled, target=0.90, min_keep=0.80, max_keep=0.95)
-    Z = PCA(n_components=n_components, random_state=RANDOM_STATE).fit_transform(X_scaled)
-
-    cum_reduced = np.cumsum(PCA(n_components=n_components, random_state=RANDOM_STATE).fit(
-        X_scaled).explained_variance_ratio_)
-
-    best_k, ks, sils, inertias = _auto_best_k(Z, max_k=max_k)
-
-    labels = KMeans(n_clusters=best_k, random_state=RANDOM_STATE, n_init=10).fit_predict(Z)
-    sil_final = silhouette_score(Z, labels)
-
-    out = data.copy()
-    out["cluster"] = labels
-
-    # ===== KPI cards
-    st.subheader(" Résumé rapide")
-    c1, c2, c3 = st.columns(3, gap="large")
-
-    with c1:
-        st.markdown(
-            f"""
-            <div class="kpi-card kpi-purple">
-              <div class="kpi-head">
-                <p class="kpi-title">Cryptos</p>
-                <div class="icon-chip chip-purple"><span class="ms">token</span></div>
-              </div>
-              <p class="kpi-value">{len(out)}</p>
-              <p class="kpi-caption">Taille de l’univers analysé.</p>
-            </div>
             """,
             unsafe_allow_html=True,
         )
 
-    with c2:
-        st.markdown(
-            f"""
-            <div class="kpi-card kpi-slate">
-              <div class="kpi-head">
-                <p class="kpi-title">PCs retenues</p>
-                <div class="icon-chip chip-slate"><span class="ms">scatter_plot</span></div>
-              </div>
-              <p class="kpi-value">{n_components}</p>
-              <p class="kpi-caption">Cible variance ≈ {target_used:.0%}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    @staticmethod
+    def _cluster_palette():
+        return [
+            {"dot": "#7C3AED", "row_css": "rgba(124,58,237,0.10)", "row_mpl": (124 / 255, 58 / 255, 237 / 255, 0.16)},
+            {"dot": "#06B6D4", "row_css": "rgba(6,182,212,0.10)", "row_mpl": (6 / 255, 182 / 255, 212 / 255, 0.16)},
+            {"dot": "#F59E0B", "row_css": "rgba(245,158,11,0.10)", "row_mpl": (245 / 255, 158 / 255, 11 / 255, 0.18)},
+            {"dot": "#EF4444", "row_css": "rgba(239,68,68,0.10)", "row_mpl": (239 / 255, 68 / 255, 68 / 255, 0.16)},
+            {"dot": "#22C55E", "row_css": "rgba(34,197,94,0.10)", "row_mpl": (34 / 255, 197 / 255, 94 / 255, 0.16)},
+            {"dot": "#3B82F6", "row_css": "rgba(59,130,246,0.10)", "row_mpl": (59 / 255, 130 / 255, 246 / 255, 0.16)},
+            {"dot": "#E11D48", "row_css": "rgba(225,29,72,0.10)", "row_mpl": (225 / 255, 29 / 255, 72 / 255, 0.16)},
+            {"dot": "#A855F7", "row_css": "rgba(168,85,247,0.10)", "row_mpl": (168 / 255, 85 / 255, 247 / 255, 0.16)},
+        ]
+
+    @classmethod
+    def _render_glass_cluster_table(cls, df: pd.DataFrame, cluster_col: str = "cluster") -> None:
+        pal = cls._cluster_palette()
+        df_show = df.copy()
+        if cluster_col in df_show.columns:
+            df_show[cluster_col] = df_show[cluster_col].astype(int)
+
+        def _row_style(row):
+            if cluster_col not in row.index:
+                return [""] * len(row)
+            tone = pal[int(row[cluster_col]) % len(pal)]["row_css"]
+            return [f"background: {tone}; border-bottom: 1px solid rgba(255,255,255,0.10);" for _ in row]
+
+        sty = (
+            df_show.style
+            .apply(_row_style, axis=1)
+            .set_table_styles([
+                {"selector": "table", "props": [("width", "100%"), ("border-collapse",
+                                                                    "separate"), ("border-spacing", "0 10px")]},
+                {"selector": "thead th", "props": [
+                    ("text-align", "left"), ("font-weight", "900"), ("letter-spacing", ".2px"),
+                    ("border", "none"), ("padding", "10px 12px"),
+                    ("background", "rgba(255,255,255,0.08)"),
+                    ("backdrop-filter", "blur(12px)"), ("-webkit-backdrop-filter", "blur(12px)"),
+                    ("border-radius", "12px"),
+                ]},
+                {"selector": "tbody td", "props": [("border", "none"), ("padding", "12px 12px"),
+                                                   ("font-weight", "650"), ("border-radius", "12px")]},
+                {"selector": "tbody tr:hover td", "props": [
+                    ("filter", "brightness(1.06)"), ("transform", "translateY(-1px)"), ("transition", "all .12s ease")]},
+            ])
         )
 
-    with c3:
-        st.markdown(
-            f"""
-            <div class="kpi-card kpi-amber">
-              <div class="kpi-head">
-                <p class="kpi-title">K optimal</p>
-                <div class="icon-chip chip-amber"><span class="ms">hub</span></div>
-              </div>
-              <p class="kpi-value">{best_k}</p>
-              <p class="kpi-caption">Silhouette = {sil_final:.3f}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.markdown('<div class="glass-table">', unsafe_allow_html=True)
+        st.markdown(sty.to_html(), unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ---------------- Public API ----------------
+
+    def render(self, df_snapshot: pd.DataFrame, max_k: int | None = None) -> None:
+        """
+        Remplace l'ancienne fonction display_kmeans_clustering(df_snapshot, max_k=6)
+        """
+        max_k = self.default_max_k if max_k is None else int(max_k)
+
+        self._inject_glass_kpi_css()
+
+        data = df_snapshot.copy()
+        features = self._select_features(data)
+
+        X = self._prepare_X(data, features, use_log=self.use_log)
+        if len(X) < 3:
+            st.warning("Il faut au moins 3 cryptos pour un clustering robuste.")
+            return
+
+        X_scaled = StandardScaler().fit_transform(X)
+
+        n_components, pca_full, cum, target_used = self._auto_pca_components(
+            X_scaled, target=self.target_variance, min_keep=self.min_keep, max_keep=self.max_keep
+        )
+        Z = PCA(n_components=n_components, random_state=self.RANDOM_STATE).fit_transform(X_scaled)
+
+        cum_reduced = np.cumsum(
+            PCA(n_components=n_components, random_state=self.RANDOM_STATE).fit(X_scaled).explained_variance_ratio_
         )
 
-    st.caption(f"Variance expliquée par les PCs retenues : **{cum_reduced[-1]:.1%}**")
+        best_k, ks, sils, inertias = self._auto_best_k(Z, max_k=max_k)
 
-    tab_overview, tab_clusters, tab_profiles = st.tabs([" Overview", " Clusters", " Profils & Insights"])
+        labels = KMeans(n_clusters=best_k, random_state=self.RANDOM_STATE, n_init=10).fit_predict(Z)
+        sil_final = silhouette_score(Z, labels)
 
-    # Tab 1: Overview
+        out = data.copy()
+        out["cluster"] = labels
 
-    with tab_overview:
-        st.markdown("##  Overview — PCA & choix de K")
-        left, right = st.columns([1.35, 1.0])
+        # ===== KPI cards
+        st.subheader(" Résumé rapide")
+        c1, c2, c3 = st.columns(3, gap="large")
 
-        with left:
+        with c1:
+            st.markdown(
+                f"""
+                <div class="kpi-card kpi-purple">
+                  <div class="kpi-head">
+                    <p class="kpi-title">Cryptos</p>
+                    <div class="icon-chip chip-purple"><span class="ms">token</span></div>
+                  </div>
+                  <p class="kpi-value">{len(out)}</p>
+                  <p class="kpi-caption">Taille de l’univers analysé.</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with c2:
+            st.markdown(
+                f"""
+                <div class="kpi-card kpi-slate">
+                  <div class="kpi-head">
+                    <p class="kpi-title">PCs retenues</p>
+                    <div class="icon-chip chip-slate"><span class="ms">scatter_plot</span></div>
+                  </div>
+                  <p class="kpi-value">{n_components}</p>
+                  <p class="kpi-caption">Cible variance ≈ {target_used:.0%}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with c3:
+            st.markdown(
+                f"""
+                <div class="kpi-card kpi-amber">
+                  <div class="kpi-head">
+                    <p class="kpi-title">K optimal</p>
+                    <div class="icon-chip chip-amber"><span class="ms">hub</span></div>
+                  </div>
+                  <p class="kpi-value">{best_k}</p>
+                  <p class="kpi-caption">Silhouette = {sil_final:.3f}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.caption(f"Variance expliquée par les PCs retenues : **{cum_reduced[-1]:.1%}**")
+
+        tab_overview, tab_clusters, tab_profiles = st.tabs([" Overview", " Clusters", " Profils & Insights"])
+
+        # Tab 1: Overview
+        with tab_overview:
+            st.markdown("##  Overview — PCA & choix de K")
+            left, right = st.columns([1.35, 1.0])
+
+            with left:
+                with st.container(border=True):
+                    st.markdown("###  PCA — Variance expliquée (pro)")
+
+                    pcs = np.arange(1, len(pca_full.explained_variance_ratio_) + 1)
+
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.step(pcs, cum, where="mid")
+                    ax.scatter(pcs, cum, s=25)
+                    ax.axhline(target_used, linestyle="--", linewidth=1)
+                    ax.axvline(n_components, linestyle="--", linewidth=1)
+                    ax.set_xlabel("Nombre de composantes (PCs)")
+                    ax.set_ylabel("Variance cumulée expliquée")
+                    ax.set_title("PCA — Cumul de variance (avec seuil & PCs retenues)")
+                    ax.grid(alpha=0.25)
+                    ax.text(n_components, min(0.98, cum[n_components - 1] + 0.03),
+                            f"PCs retenues = {n_components}", fontsize=9)
+                    ax.text(pcs[-1], target_used, f"cible {target_used:.0%}", fontsize=9, ha="right", va="bottom")
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)
+
+                    fig, ax = plt.subplots(figsize=(8, 3.5))
+                    evr = pca_full.explained_variance_ratio_
+                    top = min(len(evr), 8)
+                    ax.bar(np.arange(1, top + 1), evr[:top])
+                    ax.set_xlabel("PC")
+                    ax.set_ylabel("Variance expliquée")
+                    ax.set_title("Variance expliquée par PC (top)")
+                    ax.grid(axis="y", alpha=0.25)
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)
+
+            with right:
+                with st.container(border=True):
+                    st.markdown("###  K optimal — lecture rapide")
+
+                    fig, ax = plt.subplots(figsize=(6, 3.8))
+                    ax.plot(ks, sils, marker="o")
+                    ax.axvline(best_k, linestyle="--", linewidth=1)
+                    ax.set_xlabel("K")
+                    ax.set_ylabel("Silhouette")
+                    ax.set_title("Silhouette score (max = meilleur K)")
+                    ax.grid(alpha=0.25)
+                    ax.text(best_k, max(sils), f"best K={best_k}", fontsize=9, ha="left", va="bottom")
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)
+
+                    fig, ax = plt.subplots(figsize=(6, 3.8))
+                    ax.plot(ks, inertias, marker="o")
+                    ax.axvline(best_k, linestyle="--", linewidth=1)
+                    ax.set_xlabel("K")
+                    ax.set_ylabel("Inertia")
+                    ax.set_title("Elbow (inertia)")
+                    ax.grid(alpha=0.25)
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)
+
+        # Tab 2: Clusters
+        with tab_clusters:
+            pal = self._cluster_palette()
+
             with st.container(border=True):
-                st.markdown("###  PCA — Variance expliquée (pro)")
+                st.markdown("###  Carte des cryptos (PCA PC1/PC2 + clusters)")
 
-                pcs = np.arange(1, len(pca_full.explained_variance_ratio_) + 1)
+                if Z.shape[1] < 2:
+                    st.info("Pas de PC2 disponible (trop peu de dimensions).")
+                else:
+                    fig, ax = plt.subplots(figsize=(9, 6))
+                    point_colors = [pal[int(c) % len(pal)]["dot"] for c in labels]
 
-                fig, ax = plt.subplots(figsize=(8, 4))
-                ax.step(pcs, cum, where="mid")
-                ax.scatter(pcs, cum, s=25)
-                ax.axhline(target_used, linestyle="--", linewidth=1)
-                ax.axvline(n_components, linestyle="--", linewidth=1)
-                ax.set_xlabel("Nombre de composantes (PCs)")
-                ax.set_ylabel("Variance cumulée expliquée")
-                ax.set_title("PCA — Cumul de variance (avec seuil & PCs retenues)")
-                ax.grid(alpha=0.25)
-                ax.text(n_components, min(0.98, cum[n_components - 1] + 0.03),
-                        f"PCs retenues = {n_components}", fontsize=9)
-                ax.text(pcs[-1], target_used, f"cible {target_used:.0%}", fontsize=9, ha="right", va="bottom")
-                st.pyplot(fig, use_container_width=True)
+                    ax.scatter(Z[:, 0], Z[:, 1], s=360, c=point_colors, alpha=0.20, linewidths=0)
+                    ax.scatter(Z[:, 0], Z[:, 1], s=95, c=point_colors, alpha=0.95, edgecolors="white", linewidths=1.0)
 
-                fig, ax = plt.subplots(figsize=(8, 3.5))
-                evr = pca_full.explained_variance_ratio_
-                top = min(len(evr), 8)
-                ax.bar(np.arange(1, top + 1), evr[:top])
-                ax.set_xlabel("PC")
-                ax.set_ylabel("Variance expliquée")
-                ax.set_title("Variance expliquée par PC (top)")
-                ax.grid(axis="y", alpha=0.25)
-                st.pyplot(fig, use_container_width=True)
+                    ax.set_xlabel("PC1")
+                    ax.set_ylabel("PC2")
+                    ax.set_title("Projection PCA (PC1/PC2) + clusters K-means")
+                    ax.grid(alpha=0.22)
 
-        with right:
+                    for i in range(len(out)):
+                        name = out["Symbol"].iloc[i] if "Symbol" in out.columns else str(i)
+                        tint = pal[int(labels[i]) % len(pal)]["row_mpl"]
+                        ax.text(
+                            Z[i, 0], Z[i, 1], str(name), fontsize=8, ha="left", va="center",
+                            bbox=dict(boxstyle="round,pad=0.25", fc=tint, ec="none"),
+                        )
+
+                    from matplotlib.lines import Line2D
+                    handles = [
+                        Line2D([0], [0], marker="o", color="w", label=f"Cluster {c}",
+                               markerfacecolor=pal[c % len(pal)]["dot"], markeredgecolor="white", markersize=9)
+                        for c in range(best_k)
+                    ]
+                    ax.legend(handles=handles, title="Clusters", loc="best")
+
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)
+
             with st.container(border=True):
-                st.markdown("###  K optimal — lecture rapide")
+                st.markdown("###  Focus cluster")
 
-                fig, ax = plt.subplots(figsize=(6, 3.8))
-                ax.plot(ks, sils, marker="o")
-                ax.axvline(best_k, linestyle="--", linewidth=1)
-                ax.set_xlabel("K")
-                ax.set_ylabel("Silhouette")
-                ax.set_title("Silhouette score (max = meilleur K)")
-                ax.grid(alpha=0.25)
-                ax.text(best_k, max(sils), f"best K={best_k}", fontsize=9, ha="left", va="bottom")
+                cluster_ids = sorted(out["cluster"].unique().tolist())
+                selected = st.selectbox("Choisir un cluster", cluster_ids)
+
+                st.markdown("**Cryptos dans ce cluster :**")
+
+                cols_id = [c for c in ["Symbol", "Name"] if c in out.columns]
+                sub = out[out["cluster"] == selected].copy()
+
+                if "Market Cap" in sub.columns:
+                    sub["Market Cap"] = pd.to_numeric(sub["Market Cap"], errors="coerce")
+                    sub = sub.sort_values("Market Cap", ascending=False)
+
+                extra = [c for c in ["Market Cap", "Volume", "Price", "Change %"] if c in sub.columns]
+                sub_show = sub[cols_id + extra + ["cluster"]].copy()
+
+                for c in ["Market Cap", "Volume"]:
+                    if c in sub_show.columns:
+                        sub_show[c] = pd.to_numeric(sub_show[c], errors="coerce").apply(self._fmt_big)
+
+                self._render_glass_cluster_table(sub_show, cluster_col="cluster")
+
+        # Tab 3: Profiles & Insights
+        with tab_profiles:
+            st.markdown("##  Profils & Insights")
+
+            prof = out.groupby("cluster")[features].mean(numeric_only=True)
+            prof_z = (prof - prof.mean(axis=0)) / (prof.std(axis=0) + 1e-9)
+
+            with st.container(border=True):
+                st.markdown("###  Heatmap  — profil relatif (z-score)")
+
+                import matplotlib.patheffects as pe
+
+                fig, ax = plt.subplots(figsize=(10.5, 4.2))
+                v = prof_z.values.astype(float)
+
+                vmax = float(np.nanpercentile(np.abs(v), 95)) if np.isfinite(v).any() else 1.0
+                vmax = max(vmax, 1e-6)
+
+                cmap = plt.get_cmap("RdBu_r")
+                im = ax.imshow(v, aspect="auto", vmin=-vmax, vmax=vmax, cmap=cmap, interpolation="nearest")
+
+                ax.set_yticks(range(len(prof_z.index)))
+                ax.set_yticklabels([f"Cluster {i}" for i in prof_z.index], fontweight="bold")
+                ax.set_xticks(range(len(features)))
+                ax.set_xticklabels(features, rotation=25, ha="right", fontweight="bold")
+                ax.set_title("Heatmap z-score (annotée)", fontweight="bold", pad=10)
+
+                ax.set_xticks(np.arange(-.5, v.shape[1], 1), minor=True)
+                ax.set_yticks(np.arange(-.5, v.shape[0], 1), minor=True)
+                ax.grid(which="minor", linestyle="-", linewidth=0.8, alpha=0.18)
+                ax.tick_params(which="minor", bottom=False, left=False)
+
+                cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+                cb.ax.tick_params(labelsize=9)
+
+                for i in range(v.shape[0]):
+                    for j in range(v.shape[1]):
+                        val = v[i, j]
+                        if not np.isfinite(val):
+                            txt, tcolor = "NA", "black"
+                        else:
+                            txt = f"{val:.2f}"
+                            norm = (val + vmax) / (2 * vmax)
+                            r, g, b, _ = cmap(norm)
+                            luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                            tcolor = "black" if luminance > 0.62 else "white"
+
+                        ax.text(
+                            j, i, txt,
+                            ha="center", va="center",
+                            fontsize=10, fontweight="bold",
+                            color=tcolor,
+                            path_effects=[
+                                pe.Stroke(linewidth=2.6, foreground="black" if tcolor ==
+                                          "white" else "white", alpha=0.55),
+                                pe.Normal()
+                            ],
+                        )
+
+                fig.tight_layout()
                 st.pyplot(fig, use_container_width=True)
-
-                fig, ax = plt.subplots(figsize=(6, 3.8))
-                ax.plot(ks, inertias, marker="o")
-                ax.axvline(best_k, linestyle="--", linewidth=1)
-                ax.set_xlabel("K")
-                ax.set_ylabel("Inertia")
-                ax.set_title("Elbow (inertia)")
-                ax.grid(alpha=0.25)
-                st.pyplot(fig, use_container_width=True)
-
-    # Tab 2: Clusters
-
-    with tab_clusters:
-        pal = _cluster_palette()
-
-        with st.container(border=True):
-            st.markdown("###  Carte des cryptos (PCA PC1/PC2 + clusters)")
-
-            if Z.shape[1] < 2:
-                st.info("Pas de PC2 disponible (trop peu de dimensions).")
-            else:
-                fig, ax = plt.subplots(figsize=(9, 6))
-                point_colors = [pal[int(c) % len(pal)]["dot"] for c in labels]
-
-                ax.scatter(Z[:, 0], Z[:, 1], s=360, c=point_colors, alpha=0.20, linewidths=0)
-                ax.scatter(Z[:, 0], Z[:, 1], s=95, c=point_colors, alpha=0.95, edgecolors="white", linewidths=1.0)
-
-                ax.set_xlabel("PC1")
-                ax.set_ylabel("PC2")
-                ax.set_title("Projection PCA (PC1/PC2) + clusters K-means")
-                ax.grid(alpha=0.22)
-
-                for i in range(len(out)):
-                    name = out["Symbol"].iloc[i] if "Symbol" in out.columns else str(i)
-                    tint = pal[int(labels[i]) % len(pal)]["row_mpl"]
-                    ax.text(Z[i, 0], Z[i, 1], str(name), fontsize=8, ha="left", va="center",
-                            bbox=dict(boxstyle="round,pad=0.25", fc=tint, ec="none"))
-
-                from matplotlib.lines import Line2D
-                handles = [
-                    Line2D([0], [0], marker="o", color="w", label=f"Cluster {c}",
-                           markerfacecolor=pal[c % len(pal)]["dot"], markeredgecolor="white", markersize=9)
-                    for c in range(best_k)
-                ]
-                ax.legend(handles=handles, title="Clusters", loc="best")
-
-                st.pyplot(fig, use_container_width=True)
-
-        with st.container(border=True):
-            st.markdown("###  Focus cluster")
-
-            cluster_ids = sorted(out["cluster"].unique().tolist())
-            selected = st.selectbox("Choisir un cluster", cluster_ids)
-
-            st.markdown("**Cryptos dans ce cluster :**")
-
-            cols_id = [c for c in ["Symbol", "Name"] if c in out.columns]
-            sub = out[out["cluster"] == selected].copy()
-
-            if "Market Cap" in sub.columns:
-                sub["Market Cap"] = pd.to_numeric(sub["Market Cap"], errors="coerce")
-                sub = sub.sort_values("Market Cap", ascending=False)
-
-            extra = [c for c in ["Market Cap", "Volume", "Price", "Change %"] if c in sub.columns]
-            sub_show = sub[cols_id + extra + ["cluster"]].copy()
-
-            for c in ["Market Cap", "Volume"]:
-                if c in sub_show.columns:
-                    sub_show[c] = pd.to_numeric(sub_show[c], errors="coerce").apply(_fmt_big)
-
-            _render_glass_cluster_table(sub_show, cluster_col="cluster")
-
-    # Tab 3: Profiles & Insights
-
-    with tab_profiles:
-        st.markdown("##  Profils & Insights")
-
-        prof = out.groupby("cluster")[features].mean(numeric_only=True)
-        prof_z = (prof - prof.mean(axis=0)) / (prof.std(axis=0) + 1e-9)
-
-        with st.container(border=True):
-            st.markdown("###  Heatmap  — profil relatif (z-score)")
-
-            import matplotlib.patheffects as pe
-
-            fig, ax = plt.subplots(figsize=(10.5, 4.2))
-            v = prof_z.values.astype(float)
-
-            vmax = float(np.nanpercentile(np.abs(v), 95)) if np.isfinite(v).any() else 1.0
-            vmax = max(vmax, 1e-6)
-
-            cmap = plt.get_cmap("RdBu_r")
-            im = ax.imshow(v, aspect="auto", vmin=-vmax, vmax=vmax, cmap=cmap, interpolation="nearest")
-
-            ax.set_yticks(range(len(prof_z.index)))
-            ax.set_yticklabels([f"Cluster {i}" for i in prof_z.index], fontweight="bold")
-            ax.set_xticks(range(len(features)))
-            ax.set_xticklabels(features, rotation=25, ha="right", fontweight="bold")
-            ax.set_title("Heatmap z-score (annotée)", fontweight="bold", pad=10)
-
-            ax.set_xticks(np.arange(-.5, v.shape[1], 1), minor=True)
-            ax.set_yticks(np.arange(-.5, v.shape[0], 1), minor=True)
-            ax.grid(which="minor", linestyle="-", linewidth=0.8, alpha=0.18)
-            ax.tick_params(which="minor", bottom=False, left=False)
-
-            cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
-            cb.ax.tick_params(labelsize=9)
-
-            for i in range(v.shape[0]):
-                for j in range(v.shape[1]):
-                    val = v[i, j]
-                    if not np.isfinite(val):
-                        txt, tcolor = "NA", "black"
-                    else:
-                        txt = f"{val:.2f}"
-                        norm = (val + vmax) / (2 * vmax)
-                        r, g, b, _ = cmap(norm)
-                        luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-                        tcolor = "black" if luminance > 0.62 else "white"
-
-                    ax.text(
-                        j, i, txt,
-                        ha="center", va="center",
-                        fontsize=10, fontweight="bold",
-                        color=tcolor,
-                        path_effects=[
-                            pe.Stroke(linewidth=2.6, foreground="black" if tcolor == "white" else "white", alpha=0.55),
-                            pe.Normal()
-                        ],
-                    )
-
-            fig.tight_layout()
-            st.pyplot(fig, use_container_width=True)
+                plt.close(fig)

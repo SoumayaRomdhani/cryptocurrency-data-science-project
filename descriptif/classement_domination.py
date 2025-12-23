@@ -66,8 +66,7 @@ class ClassementDomination:
         )
 
     @staticmethod
-    def _compute_tables(df: pd.DataFrame, max_coins: int) -> tuple[pd.DataFrame, pd.Series, pd.Series, pd.Series]:
-        # Nettoyage minimal
+    def _compute_tables(df: pd.DataFrame, max_coins: int) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
         data = df.dropna(subset=["Market Cap", "Volume"]).copy()
         data = data[data["Market Cap"] > 0]
         data["LiquidityScore"] = data["Volume"] / data["Market Cap"]
@@ -79,9 +78,10 @@ class ClassementDomination:
         vol_share = main["Volume"] / main["Volume"].sum()
         liq_score = main["LiquidityScore"]
 
-        return main, symbols, mcap_share, vol_share, liq_score
+        return symbols, mcap_share, vol_share, liq_score
 
-    def _plot_donut(self, labels: pd.Series, values: pd.Series, title: str, css_class: str) -> None:
+    @staticmethod
+    def _plot_donut(labels: pd.Series, values: pd.Series, title: str, css_class: str) -> None:
         st.markdown(
             f'<div class="chart-container {css_class}"><p class="chart-title">{title}</p>',
             unsafe_allow_html=True
@@ -89,12 +89,7 @@ class ClassementDomination:
 
         fig, ax = plt.subplots(figsize=(4, 4))
         fig.patch.set_alpha(0)
-        ax.pie(
-            values,
-            labels=labels,
-            autopct="%1.1f%%",
-            startangle=90,
-        )
+        ax.pie(values, labels=labels, autopct="%1.1f%%", startangle=90)
         centre = plt.Circle((0, 0), 0.70, fc="white", alpha=0.3)
         ax.add_artist(centre)
         ax.axis("equal")
@@ -103,7 +98,8 @@ class ClassementDomination:
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    def _plot_liquidity(self, labels: pd.Series, liq_score: pd.Series) -> None:
+    @staticmethod
+    def _plot_liquidity(labels: pd.Series, liq_score: pd.Series) -> None:
         st.markdown(
             '<div class="chart-container chart-amber"><p class="chart-title">Score de liquidité</p>',
             unsafe_allow_html=True
@@ -113,7 +109,6 @@ class ClassementDomination:
         fig.patch.set_alpha(0)
         ax.set_facecolor("none")
 
-        # ⚠️ comme ton code original (même couleur)
         ax.bar(labels, liq_score, alpha=0.85, color="#dda0dd")
         ax.set_ylabel("Vol / MCap", fontsize=9)
         ax.grid(axis="y", alpha=0.3)
@@ -127,16 +122,13 @@ class ClassementDomination:
         st.markdown("</div>", unsafe_allow_html=True)
 
     def render(self, df: pd.DataFrame, max_coins: int | None = None) -> None:
-        """
-        Point d’entrée Streamlit.
-        """
         st.subheader(" Classement & Domination du Marché")
         self._inject_css()
 
-        max_coins = max_coins if max_coins is not None else self.default_max_coins
+        max_coins = self.default_max_coins if max_coins is None else max_coins
 
         try:
-            _, symbols, mcap_share, vol_share, liq_score = self._compute_tables(df, max_coins=max_coins)
+            symbols, mcap_share, vol_share, liq_score = self._compute_tables(df, max_coins=max_coins)
         except Exception as e:
             st.error(f"Erreur Classement/Domination: {e}")
             return

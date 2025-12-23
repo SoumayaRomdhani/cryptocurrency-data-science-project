@@ -1,20 +1,17 @@
 import streamlit as st
 import pandas as pd
 
-from descriptif.price_evolution import display_price_evolution
-from descriptif.volume_analysis import display_volume_analysis
-from descriptif.heatmap_correlation import corrélation_heatmap
-
+from descriptif.price_evolution import PriceEvolution
+from descriptif.volume_analysis import VolumeAnalysis
+from descriptif.heatmap_correlation import CorrelationHeatmap
 from descriptif.classement_domination import ClassementDomination
-
-from descriptif.KPIs import display_universe_kpis
-from descriptif.correlation_market_factors import display_market_correlations
-from descriptif.seasonality_analysis import display_seasonality_analysis
-
+from descriptif.KPIs import UniverseKPIs
+from descriptif.correlation_market_factors import MarketCorrelations
+from descriptif.seasonality_analysis import SeasonalityAnalysis
 from descriptif.acp_snapshot import ACPSnapshot
 
-from predictif.lstm_model import display_model_results
-from predictif.kmeans_clustering import display_kmeans_clustering
+from predictif.lstm_model import ModelResultsViewer
+from predictif.kmeans_clustering import KMeansClustering
 
 
 st.set_page_config(
@@ -23,7 +20,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
 
 st.markdown(
     """
@@ -276,12 +272,23 @@ def load_snapshot_data():
 df = load_data()
 df_snapshot = load_snapshot_data()
 
-# ✅ Instances des classes
+price_view = PriceEvolution(months=[9, 10, 11], figsize=(5, 2.5))
+volume_view = VolumeAnalysis(months=[9, 10, 11], figsize=(5, 2.5))
+
+kpis_view = UniverseKPIs(default_universe_size=9)
 acp_snapshot_view = ACPSnapshot(n_components=3, top_n_labels=10, ticker_col="Ticker")
+
 classement_domination_view = ClassementDomination(default_max_coins=9)
+heatmap_view = CorrelationHeatmap(months=[9, 10, 11], figsize=(5, 4))
+market_corr_view = MarketCorrelations(ticker="BTC-USD", months=[9, 10, 11], figsize=(6, 2.5))
+
+seasonality_view = SeasonalityAnalysis(ticker="BTC-USD", months=[9, 10, 11], figsize=(6, 3))
+
+kmeans_view = KMeansClustering(target_variance=0.90, min_keep=0.80, max_keep=0.95, default_max_k=6, use_log=True)
 
 
-# SIDEBAR
+model_results_view = ModelResultsViewer(default_pkl_path="data/model_results.pkl")
+
 
 st.sidebar.markdown(
     """
@@ -361,13 +368,13 @@ elif menu == "Analyse Descriptive":
 
     with tab1:
         st.markdown('<div class="section-header">KPIs Globaux</div>', unsafe_allow_html=True)
-        display_universe_kpis(df_snapshot)
+        kpis_view.render(df_snapshot)
 
         st.markdown('<div class="section-header">Évolution des Prix</div>', unsafe_allow_html=True)
-        display_price_evolution(df)
+        price_view.render(df)
 
         st.markdown('<div class="section-header">Analyse des Volumes</div>', unsafe_allow_html=True)
-        display_volume_analysis(df)
+        volume_view.render(df)
 
     with tab2:
         st.markdown('<div class="section-header">Analyse en Composantes Principales</div>', unsafe_allow_html=True)
@@ -375,14 +382,14 @@ elif menu == "Analyse Descriptive":
 
     with tab3:
         st.markdown('<div class="section-header">Heatmap de Corrélation</div>', unsafe_allow_html=True)
-        corrélation_heatmap(df)
+        heatmap_view.render(df)
 
         st.markdown('<div class="section-header">Marché vs Prix (BTC)</div>', unsafe_allow_html=True)
-        display_market_correlations(df)
+        market_corr_view.render(df)
 
     with tab4:
         st.markdown('<div class="section-header">Analyse Saisonnière</div>', unsafe_allow_html=True)
-        display_seasonality_analysis(df)
+        seasonality_view.render(df)
 
         st.markdown('<div class="section-header">Classement et Domination</div>', unsafe_allow_html=True)
         classement_domination_view.render(df_snapshot)
@@ -402,7 +409,7 @@ elif menu == "Analyse Prédictive":
             """,
             unsafe_allow_html=True
         )
-        display_kmeans_clustering(df_snapshot)
+        kmeans_view.render(df_snapshot)
 
     with pred_tab2:
         st.markdown('<div class="section-header">Modèles de Prédiction</div>', unsafe_allow_html=True)
@@ -418,7 +425,8 @@ elif menu == "Analyse Prédictive":
                 """,
                 unsafe_allow_html=True
             )
-            display_model_results(model_filter="lstm")
+
+            model_results_view.render(model_filter="lstm")
 
         with xgb_tab:
             st.markdown(
@@ -429,4 +437,5 @@ elif menu == "Analyse Prédictive":
                 """,
                 unsafe_allow_html=True
             )
-            display_model_results(model_filter="xgb")
+
+            model_results_view.render(model_filter="xgb")
