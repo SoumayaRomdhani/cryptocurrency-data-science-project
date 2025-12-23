@@ -4,12 +4,13 @@ import pandas as pd
 from descriptif.price_evolution import display_price_evolution
 from descriptif.volume_analysis import display_volume_analysis
 from descriptif.heatmap_correlation import corrélation_heatmap
-from descriptif.classement_domination import display_classement_domination
+
+from descriptif.classement_domination import ClassementDomination
+
 from descriptif.KPIs import display_universe_kpis
 from descriptif.correlation_market_factors import display_market_correlations
 from descriptif.seasonality_analysis import display_seasonality_analysis
 
-# ✅ CHANGEMENT ICI: on importe la classe au lieu de la fonction
 from descriptif.acp_snapshot import ACPSnapshot
 
 from predictif.lstm_model import display_model_results
@@ -260,9 +261,6 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 )
 
 
-# DATA
-
-
 @st.cache_data
 def load_data():
     df = pd.read_csv("data/données_historique_cleaned.csv")
@@ -278,8 +276,9 @@ def load_snapshot_data():
 df = load_data()
 df_snapshot = load_snapshot_data()
 
-# ✅ Instance de la classe ACP (tu peux régler les params ici)
+# ✅ Instances des classes
 acp_snapshot_view = ACPSnapshot(n_components=3, top_n_labels=10, ticker_col="Ticker")
+classement_domination_view = ClassementDomination(default_max_coins=9)
 
 
 # SIDEBAR
@@ -301,8 +300,6 @@ menu = st.sidebar.radio(
     label_visibility="collapsed"
 )
 
-
-# PAGES
 
 if menu == "Accueil":
     st.markdown('<div class="main-header">Bienvenue sur CryptoCurrencyTracker</div>', unsafe_allow_html=True)
@@ -362,8 +359,6 @@ elif menu == "Analyse Descriptive":
 
     tab1, tab2, tab3, tab4 = st.tabs(["KPIs & Évolutions", "ACP", "Corrélations", "Saisonnalité"])
 
-    # ⚠️ le reste des imports/appels reste exactement comme tu avais
-
     with tab1:
         st.markdown('<div class="section-header">KPIs Globaux</div>', unsafe_allow_html=True)
         display_universe_kpis(df_snapshot)
@@ -376,7 +371,6 @@ elif menu == "Analyse Descriptive":
 
     with tab2:
         st.markdown('<div class="section-header">Analyse en Composantes Principales</div>', unsafe_allow_html=True)
-        # ✅ CHANGEMENT ICI: on appelle la classe
         acp_snapshot_view.render(df_snapshot)
 
     with tab3:
@@ -391,7 +385,7 @@ elif menu == "Analyse Descriptive":
         display_seasonality_analysis(df)
 
         st.markdown('<div class="section-header">Classement et Domination</div>', unsafe_allow_html=True)
-        display_classement_domination(df_snapshot)
+        classement_domination_view.render(df_snapshot)
 
 elif menu == "Analyse Prédictive":
     st.markdown('<div class="main-header">Prédictions de Prix</div>', unsafe_allow_html=True)
