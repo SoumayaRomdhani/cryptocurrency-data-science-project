@@ -8,7 +8,9 @@ from descriptif.classement_domination import display_classement_domination
 from descriptif.KPIs import display_universe_kpis
 from descriptif.correlation_market_factors import display_market_correlations
 from descriptif.seasonality_analysis import display_seasonality_analysis
-from descriptif.acp_snapshot import display_acp_snapshot
+
+# ✅ CHANGEMENT ICI: on importe la classe au lieu de la fonction
+from descriptif.acp_snapshot import ACPSnapshot
 
 from predictif.lstm_model import display_model_results
 from predictif.kmeans_clustering import display_kmeans_clustering
@@ -176,53 +178,37 @@ section[data-testid="stSidebar"] div[role="radiogroup"]{
   gap: 10px;
 }
 
-/* ---- NO ENCLOSED/FRAMED LOOK ----
-   We keep hover + active underline, but remove border, card bg and shadows.
-   We make it look like a clean list with subtle hover background.
-*/
+/* ---- NO ENCLOSED/FRAMED LOOK ---- */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label{
   position: relative;
   display: flex;
   align-items: center;
   padding: 0.55rem 0.9rem;
   border-radius: 12px;
-
-  /* remove "encadrées" */
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-
   cursor: pointer;
   transition: background 180ms ease, transform 180ms ease;
 }
-
-/* Hover: soft highlight only */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover{
   background: rgba(102,126,234,0.10) !important;
   transform: translateX(2px);
 }
-
-/* Hide default radio circle */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child{
   display: none !important;
 }
-
-/* Text */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label span{
   font-weight: 750;
   color: var(--text-primary);
   font-size: 1.05rem;
 }
-
-/* Active item: stronger text + underline */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked){
-  background: rgba(102,126,234,0.12) !important;  /* subtle */
+  background: rgba(102,126,234,0.12) !important;
 }
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) span{
   color: #111827;
 }
-
-/* Underline active */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked)::after{
   content: "";
   position: absolute;
@@ -291,6 +277,9 @@ def load_snapshot_data():
 
 df = load_data()
 df_snapshot = load_snapshot_data()
+
+# ✅ Instance de la classe ACP (tu peux régler les params ici)
+acp_snapshot_view = ACPSnapshot(n_components=3, top_n_labels=10, ticker_col="Ticker")
 
 
 # SIDEBAR
@@ -373,6 +362,8 @@ elif menu == "Analyse Descriptive":
 
     tab1, tab2, tab3, tab4 = st.tabs(["KPIs & Évolutions", "ACP", "Corrélations", "Saisonnalité"])
 
+    # ⚠️ le reste des imports/appels reste exactement comme tu avais
+
     with tab1:
         st.markdown('<div class="section-header">KPIs Globaux</div>', unsafe_allow_html=True)
         display_universe_kpis(df_snapshot)
@@ -385,7 +376,8 @@ elif menu == "Analyse Descriptive":
 
     with tab2:
         st.markdown('<div class="section-header">Analyse en Composantes Principales</div>', unsafe_allow_html=True)
-        display_acp_snapshot(df_snapshot)
+        # ✅ CHANGEMENT ICI: on appelle la classe
+        acp_snapshot_view.render(df_snapshot)
 
     with tab3:
         st.markdown('<div class="section-header">Heatmap de Corrélation</div>', unsafe_allow_html=True)
